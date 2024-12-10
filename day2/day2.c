@@ -5,11 +5,27 @@
 
 #define PRINT_INT(x) printf("%s is %d\n", #x, x)
 
+typedef struct Node {
+	int number;
+	struct Node *next;
+} Node;
+
+typedef struct Row {
+	int size;
+	Node *first;
+	struct Row *next;
+} Row;
+
 int main() {
 	FILE *file;
 	char line[256];
 	char *word;
-	int prev, curr, safe = 0, dir = 0;
+	int curr, safe = 0;
+
+	Row *rows;
+
+	Row *last_row = NULL;
+
 
 	// open the file for reading
 	file = fopen("input.txt", "r");
@@ -22,37 +38,35 @@ int main() {
 
 	// read each line from the file
 	while(fgets(line, sizeof(line), file)) {
-		dir = 0;
+		// new row, create a new item in rows
+		Row *newRow = malloc(sizeof(Row));
+		newRow->first = NULL;
+		newRow->size = 0;
+		newRow->next = NULL;
+
+		if(last_row == NULL) {
+			// this is the first row
+			rows = newRow;
+			last_row = newRow;
+		} else {
+			// this is not the first row
+			last_row->next = newRow;
+			last_row = newRow;
+		}
 
 		// split into words
 		word = strtok(line, " ");
 
-		// convert to ints
-		curr = atoi(word);
-
 		while(word != NULL) {
-			word = strtok(NULL, " ");
-
-			// test if we are at the end
-			if(word == NULL) break;
-			
-			prev = curr;
+			// convert to ints and add into new node
 			curr = atoi(word);
+			Node *newNode = malloc(sizeof(Node));
+			newNode->next = NULL;
+			newNode->number = curr;
 
-			// test if no change
-			if(curr == prev) break;
 
-			// test if jump too large
-			if(abs(curr - prev) > 3) break;
-
-			// if no direction yet, save current direction
-			if(dir == 0) {
-				dir = (curr-prev) / abs(curr-prev);
-			} else // otherwise test direction is the same
-			{
-				if(dir != (curr-prev)/abs(curr-prev)) break;
-			}
-
+			// try to get another word
+			word = strtok(NULL, " ");
 		}
 
 		// if word is NULL we made it to the end of the line without 
