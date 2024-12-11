@@ -30,7 +30,7 @@ int main() {
 
 
 	// open the file for reading
-	file = fopen("example.txt", "r");
+	file = fopen("input.txt", "r");
 
 	// check if it's open
 	if(file == NULL) {
