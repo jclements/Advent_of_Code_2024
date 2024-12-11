@@ -64,15 +64,24 @@ int main() {
 			newNode->next = NULL;
 			newNode->number = curr;
 
+			if(newRow->first == NULL) {
+				// this is the first entry in the row
+				newRow->first = newNode;
+			} else {
+				// this is not the first entry
+				Node *last = newRow->first;
+				while(last->next != NULL) {
+					last = last->next;
+				}	// last now points to the last node since last->next == NULL
+
+				last->next = newNode;
+			}
+
+			// increase size of row
+			newRow->size += 1;
 
 			// try to get another word
 			word = strtok(NULL, " ");
-		}
-
-		// if word is NULL we made it to the end of the line without 
-		// failing any tests
-		if(word == NULL) {
-			safe += 1;
 		}
 
 	}
