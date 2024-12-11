@@ -16,6 +16,8 @@ typedef struct Row {
 	struct Row *next;
 } Row;
 
+bool isSafe(Node *n);
+
 int main() {
 	FILE *file;
 	char line[256];
@@ -28,7 +30,7 @@ int main() {
 
 
 	// open the file for reading
-	file = fopen("input.txt", "r");
+	file = fopen("example.txt", "r");
 
 	// check if it's open
 	if(file == NULL) {
@@ -86,5 +88,42 @@ int main() {
 
 	}
 
+	Row *r = rows;
+	while(r != NULL) {
+		if(isSafe(r->first)) {
+			safe += 1;
+		}
+		r = r->next;
+	}
+
 	PRINT_INT(safe);
+}
+
+bool isSafe(Node *n) {
+	int curr, prev, dir = 0;
+	curr = n->number;
+	while(n->next != NULL) {
+		// set up next numbers to test
+				prev = curr;
+		curr = n->next->number;
+
+		int gap = prev - curr;
+
+		// must increase or decrease by 1, 2, or 3
+		if(abs(gap) < 1 || abs(gap) > 3) return false;
+
+		// calculate current direction
+		int cur_dir = (gap) / abs(gap);
+
+		if(dir == 0) {
+			// this is the first direction to compare all others to
+			dir = cur_dir;
+		} else {
+			// current direction must equal first direction
+			if(cur_dir != dir) return false;
+		}
+
+		n = n->next;
+	}
+	return true;
 }
