@@ -17,6 +17,9 @@ typedef struct Row {
 } Row;
 
 bool isSafe(Node *n);
+bool damped(Row *r);
+void deleteList(Node *n);
+void deleteRows(Row *r);
 
 int main() {
 	FILE *file;
@@ -97,6 +100,20 @@ int main() {
 	}
 
 	PRINT_INT(safe);
+	safe = 0;
+
+	r = rows;
+	while(r != NULL) {
+		if(damped(r)) {
+			safe += 1;
+		}
+		r = r->next;
+	}
+
+	printf("With damping ");
+	PRINT_INT(safe);
+
+	deleteRows(rows);
 }
 
 bool isSafe(Node *n) {
@@ -126,4 +143,70 @@ bool isSafe(Node *n) {
 		n = n->next;
 	}
 	return true;
+}
+
+bool damped(Row *r) {
+	int max = r->size;
+
+	if(isSafe(r->first)) {
+		// row is safe with no damping
+		return true;
+	} else {
+		// build new rows with one item missing.
+		for(int i = 0; i < max; i++) {
+			int nodeNum = 0;
+			Node *tempRow = NULL;
+			Node *insPoint;
+			Node *curr = r->first;
+			while(curr != NULL) {
+				if(nodeNum != i) {
+					// add this node
+					Node *newNode = malloc(sizeof(Node));
+					newNode->number = curr->number;
+					newNode->next = NULL;
+
+					if(tempRow == NULL) {
+						// this is the first node
+						tempRow = newNode;
+						insPoint = newNode;
+					} else {
+						// not the first node, insPoint is the last node added
+						insPoint->next = newNode;
+						insPoint = newNode;
+					}
+				}
+				nodeNum++;	// increment node count whether or not it was added
+				curr = curr->next;
+			}
+			// test the new row
+			if(isSafe(tempRow)) return true;
+
+		}
+	}
+
+
+	return false;
+}
+
+void deleteList(Node *n) {
+	Node *curr = n;
+	Node *next;
+
+	while(curr != NULL) {
+		next = curr->next;
+		free(curr);
+		curr = next;
+	}
+}
+
+void deleteRows(Row *r) {
+	Row *curr = r;
+	Row *next;
+
+	while(curr != NULL) {
+		next = curr->next;
+		deleteList(curr->first);
+		free(curr);
+		curr = next;
+	}
 }
