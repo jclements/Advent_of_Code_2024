@@ -5,6 +5,7 @@
 #include <ctype.h>
 
 #define PRINT_INT(x) printf("%s is %d\n", #x, x)
+#define PRINT_CHAR(x) printf("%s is %c\n", #x, x)
 #define PRINT_STRING(x) printf("%s is %s\n", #x, x)
 
 typedef enum {
@@ -15,6 +16,7 @@ typedef enum {
 	MULT,
 	GARBAGE,
 	ALPHA,
+	MULSTMT,
 } TokenType;
 
 const char *tokentypes[] = {
@@ -24,7 +26,8 @@ const char *tokentypes[] = {
 	"COMMA",
 	"MULT",
 	"GARBAGE",
-	"ALPHA"
+	"ALPHA",
+	"MULSTMT"
 };
 
 
@@ -42,6 +45,11 @@ bool streq(char *s1, char *s2);
 bool strcont(char *s1, char *s2);
 void addToken(TokenType t, int v, Node *n);
 void printTokens(Node *n);
+void findMul(Node *top);
+void removeNext(Node *curr);
+void combineNum(Node *top);
+void combineGarb(Node *top);
+void evalMult(Node *top);
 
 
 int main() {
@@ -68,85 +76,82 @@ int main() {
 
 	// read each char from the file
 	while((ch = fgetc(file)) != EOF) {
-		while(ch != EOF && ch >= 'a' && ch <= 'z') {
-			// if next char is a lowercase letter, add it onto the string buffer
-			PRINT_INT(ch);
+		if(ch != EOF && ch >= 'a' && ch <= 'z') {
+			// if ch is a lower case letter, add an alpha token
+			PRINT_CHAR(ch);
 
-			// make a null terminated string out of the char
-			char *s = malloc(2);
-			*s = ch;
-			*(s+1) = 0;
-			PRINT_STRING(s);
-
-			// concat onto the buffer
-			buff = strncat(buff, s, 1);
-			PRINT_STRING(buff);
-
-			if(streq(buff, "mul")) {
-				// finished the operator, add MULT token and flushbuffer
-				addToken(MULT, 0, last);
-				last = last->next;
-				*buff = 0;
-			} else if(!strcont(buff, "mul")) {
-				// the current state of buffer isn't part of operator
-				*buff = 0;
-			}
-		}
-
-		// buffer is not empty if we just ran out of letters without 
-		// finishing an operator
-		if(*buff != 0) {
-			// add GARBAGE token
-			addToken(GARBAGE, 0, last);
+			addToken(ALPHA, ch, last);
 			last = last->next;
-			PRINT_STRING(buff);
-			*buff = 0;
+
+			continue;
 		}
 
-		/**
-		while(ch != EOF && ch >= '0' && ch <= '9') {
-			// if next char is a number, add it onto the string buffer
-			PRINT_INT(ch);
+		if(ch != EOF && ch >= '0' && ch <= '9') {
+			// if ch is a number add a number token
+			PRINT_CHAR(ch);
+			addToken(NUMBER, ch-'0', last);
+			last = last->next;
 
-			// make a null terminated string out of the char
-			char *s = malloc(2);
-			*s = ch;
-			*(s+1) = 0;
-			PRINT_STRING(s);
-
-			// concat onto the buffer
-			buff = strncat(buff, s, 1);
-			PRINT_STRING(buff);
-			ch = fgetc(file);
-
-			// if ch isn't number we have the whole number in the buffer
-			if(ch)
-		}**/
+			continue;
+		}
 
 		// whitespace is also GARBAGE
 		if(isspace(ch)) {
 			addToken(GARBAGE, 0, last);
 			last = last->next;
+
+			continue;
 		}
 
 		if(ch == '(') {
 			addToken(OPEN_BRACKET, 0, last);
 			last = last->next;
+
+			continue;
 		}
 
 		if(ch == ')') {
 			addToken(CLOSE_BRACKET, 0, last);
 			last = last->next;
+
+			continue;
 		}
 
 		if(ch == ',') {
 			addToken(COMMA, 0, last);
 			last = last->next;
+
+			continue;
 		}
+
+		// anything else is garbage
+		addToken(GARBAGE, 0, last);
+		last = last->next;
 	}
 
+	printf("\n");
 	printTokens(top);
 	printf("\n");
+
+	findMul(top);
+	combineNum(top);
+	combineGarb(top);
+	evalMult(top);
+
+	printf("\n");
+	printTokens(top);
+	printf("\n");
+
+	int sum = 0;
+	Node *p = top->next;
+	while(p != NULL) {
+		if(p->token->kind == MULSTMT) {
+			sum += p->token->value;
+		}
+		p = p->next;
+	}
+
+	PRINT_INT(sum);
 
 	fclose(file);
 
@@ -181,7 +186,146 @@ void addToken(TokenType t, int v, Node *n) {
 void printTokens(Node *n) {
 	while(n->next != NULL) {
 		n = n->next;
-		printf("type: %s, Value: %d->", tokentypes[n->token->kind], n->token->value);
+		printf("type: %s", tokentypes[n->token->kind]);
+		if(n->token->kind == ALPHA) {
+			printf(", Value: %c", n->token->value);
+		} else if(n->token->kind == NUMBER || n->token->kind == MULSTMT) {
+			printf(", Value: %d", n->token->value);
+		}
+		printf(" -> ");
 	}
 	printf("NULL\n");
+}
+
+void findMul(Node *top) {
+	Node *posM = top->next, *posU, *posL;
+	while(posM != NULL) {
+		// check the next two nodes are not NULL before accessing fields
+		posU = posM->next;
+		if(posU == NULL) return;
+		posL = posU->next;
+		if(posL == NULL) return;
+
+		// all 3 are real Nodes, now can check the values
+		if(posM->token->value == 'm' &&
+				posU->token->value == 'u' &&
+				posL->token->value == 'l') {
+			// found 'm'->'u'->'l' so combine into one MULT token
+			posM->token->kind = MULT;
+			posM->token->value = 0;
+
+			// free unused 'u' and 'l' nodes
+			removeNext(posM);
+			removeNext(posM);
+		}
+
+		posM = posM->next;
+	}
+}
+
+void removeNext(Node *curr) {
+	Node *next = curr->next;
+	curr->next = next->next;
+	free(next->token);
+	free(next);
+}
+
+void combineNum(Node *top) {
+	Node *pNumTen = top->next, *pNumOne;
+	while(pNumTen != NULL) {
+		// check we are not at the end
+		pNumOne = pNumTen->next;
+		if(pNumOne == NULL) return;
+
+		// we have two tokens, check if both are numbers
+		if(pNumTen->token->kind == NUMBER && pNumOne->token->kind == NUMBER) {
+			// combine the numbers
+			pNumTen->token->value *= 10;
+			pNumTen->token->value += pNumOne->token->value;
+			removeNext(pNumTen);
+			// do not increment position of pNumTen here so we can check if the 
+			// next Node is a number again
+		} else {
+			// one of the two is not a number, so nothing to combine
+			// increment position of pNumTen
+			pNumTen = pNumTen->next;
+		}
+	}
+}
+
+void combineGarb(Node *top) {
+	Node *pGarb1 = top->next, *pGarb2;
+	while(pGarb1 != NULL) {
+		// check we are not at the end
+		pGarb2 = pGarb1->next;
+		if(pGarb2 == NULL) return;
+
+		// we have two tokens, check if both are garbage
+		if(pGarb1->token->kind == GARBAGE && pGarb2->token->kind == GARBAGE) {
+			// combine the garbage
+			removeNext(pGarb1);
+			// do not increment position so we can test the next node
+		} else {
+			// no combine to do, so increment position
+			pGarb1 = pGarb1->next;
+		}
+	}
+}
+
+void evalMult(Node *top) {
+	Node *pMul = top, *pOB, *pn1, *pn2, *pCom, *pCB;
+
+	while(pMul->next != NULL) {
+		pMul = pMul->next;
+		
+		// test for "mul"
+		if(pMul->token->kind != MULT) continue;
+
+		printf("found a mul ");
+
+		// test if next node exists and is '('
+		if(pMul->next == NULL) return;
+		pOB = pMul->next;
+		if(pOB->token->kind != OPEN_BRACKET) continue;
+
+		printf("found a ob ");
+
+		// test if next node exists and is a number
+		if(pOB->next == NULL) return;
+		pn1 = pOB->next;
+		if(pn1->token->kind != NUMBER) continue;
+
+		printf("found a num ");
+
+		// test if next node exists and is a COMMA
+		if(pn1->next == NULL) return;
+		pCom = pn1->next;
+		if(pCom->token->kind != COMMA) continue;
+
+		printf("found a comma ");
+
+		// test if next node exists and is a number
+		if(pCom->next == NULL) return;
+		pn2 = pCom->next;
+		if(pn2->token->kind != NUMBER) continue;
+
+		printf("found a num ");
+
+		// test if next node exists and is a ')'
+		if(pn2->next == NULL) return;
+		pCB = pn2->next;
+		if(pCB->token->kind != CLOSE_BRACKET) continue;
+
+		printf("found a cb \n");
+
+		// if we get to here we have a proper mul(n,m) statement
+		pMul->token->kind = MULSTMT;
+		pMul->token->value = pn1->token->value * pn2->token->value;
+
+		// remove unused nodes
+		for(int i = 0; i < 5; i++) {
+			// remove 5 nodes (pOB, pn1, pn2, pCom, pCB)
+			removeNext(pMul);
+		}
+	}
 }
