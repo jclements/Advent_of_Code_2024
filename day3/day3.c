@@ -17,6 +17,9 @@ typedef enum {
 	GARBAGE,
 	ALPHA,
 	MULSTMT,
+	APOS,
+	DONT,
+	DO,
 } TokenType;
 
 const char *tokentypes[] = {
@@ -27,7 +30,10 @@ const char *tokentypes[] = {
 	"MULT",
 	"GARBAGE",
 	"ALPHA",
-	"MULSTMT"
+	"MULSTMT",
+	"APOS",
+	"DONT",
+	"DO"
 };
 
 
@@ -50,6 +56,8 @@ void removeNext(Node *curr);
 void combineNum(Node *top);
 void combineGarb(Node *top);
 void evalMult(Node *top);
+void evalDont(Node *top);
+void evalDo(Node *top);
 
 
 int main() {
@@ -66,7 +74,7 @@ int main() {
 	top->token = NULL;
 
 	// open the file for reading
-	file = fopen("example.txt", "r");
+	file = fopen("input.txt", "r");
 
 	// check if it's open
 	if(file == NULL) {
@@ -124,6 +132,13 @@ int main() {
 			continue;
 		}
 
+		if(ch == '\'') {
+			addToken(APOS, 0, last);
+			last = last->next;
+
+			continue;
+		}
+
 		// anything else is garbage
 		addToken(GARBAGE, 0, last);
 		last = last->next;
@@ -137,16 +152,25 @@ int main() {
 	combineNum(top);
 	combineGarb(top);
 	evalMult(top);
+	evalDont(top);
+	evalDo(top);
 
 	printf("\n");
 	printTokens(top);
 	printf("\n");
 
 	int sum = 0;
+	bool do_mul = true;
 	Node *p = top->next;
 	while(p != NULL) {
-		if(p->token->kind == MULSTMT) {
+		if(p->token->kind == MULSTMT && do_mul) {
 			sum += p->token->value;
+		}
+		if(p->token->kind == DO) {
+			do_mul = true;
+		}
+		if(p->token->kind == DONT) {
+			do_mul = false;
 		}
 		p = p->next;
 	}
@@ -281,42 +305,30 @@ void evalMult(Node *top) {
 		// test for "mul"
 		if(pMul->token->kind != MULT) continue;
 
-		printf("found a mul ");
-
 		// test if next node exists and is '('
 		if(pMul->next == NULL) return;
 		pOB = pMul->next;
 		if(pOB->token->kind != OPEN_BRACKET) continue;
-
-		printf("found a ob ");
 
 		// test if next node exists and is a number
 		if(pOB->next == NULL) return;
 		pn1 = pOB->next;
 		if(pn1->token->kind != NUMBER) continue;
 
-		printf("found a num ");
-
 		// test if next node exists and is a COMMA
 		if(pn1->next == NULL) return;
 		pCom = pn1->next;
 		if(pCom->token->kind != COMMA) continue;
-
-		printf("found a comma ");
 
 		// test if next node exists and is a number
 		if(pCom->next == NULL) return;
 		pn2 = pCom->next;
 		if(pn2->token->kind != NUMBER) continue;
 
-		printf("found a num ");
-
 		// test if next node exists and is a ')'
 		if(pn2->next == NULL) return;
 		pCB = pn2->next;
 		if(pCB->token->kind != CLOSE_BRACKET) continue;
-
-		printf("found a cb \n");
 
 		// if we get to here we have a proper mul(n,m) statement
 		pMul->token->kind = MULSTMT;
@@ -326,6 +338,91 @@ void evalMult(Node *top) {
 		for(int i = 0; i < 5; i++) {
 			// remove 5 nodes (pOB, pn1, pn2, pCom, pCB)
 			removeNext(pMul);
+		}
+	}
+}
+
+void evalDont(Node *top) {
+	Node *posD = top, *posO, *posN, *pApos, *posT, *pOB, *pCB;
+	while(posD->next != NULL) {
+		posD = posD->next;
+		
+		// test for 'd'
+		if(posD->token->kind != ALPHA || posD->token->value != 'd') continue;
+
+		// test if next node exists and is 'o'
+		if(posD->next == NULL) return;
+		posO = posD->next;
+		if(posO->token->kind != ALPHA || posO->token->value != 'o') continue;
+
+		// test if next node exists and is 'n'
+		if(posO->next == NULL) return;
+		posN = posO->next;
+		if(posN->token->kind != ALPHA || posN->token->value != 'n') continue;
+
+		// test if next node exists and is a APOS
+		if(posN->next == NULL) return;
+		pApos = posN->next;
+		if(pApos->token->kind != APOS) continue;
+
+		// test if next node exists and is a 't'
+		if(pApos->next == NULL) return;
+		posT = pApos->next;
+		if(posT->token->kind != ALPHA || posT->token->value != 't') continue;
+
+		// test if next node exists and is a '('
+		if(posT->next == NULL) return;
+		pOB = posT->next;
+		if(pOB->token->kind != OPEN_BRACKET) continue;
+
+		// test if next node exists and is a ')'
+		if(pOB->next == NULL) return;
+		pCB = pOB->next;
+		if(pCB->token->kind != CLOSE_BRACKET) continue;
+
+		// if we get to here we have a proper don't() statement
+		posD->token->kind = DONT;
+		posD->token->value = 0;
+
+		// remove unused nodes
+		for(int i = 0; i < 6; i++) {
+			// remove 6 nodes (O, N, ', T, (, ))
+			removeNext(posD);
+		}
+	}
+}
+
+void evalDo(Node *top) {
+	Node *posD = top, *posO, *pOB, *pCB;
+	while(posD->next != NULL) {
+		posD = posD->next;
+		
+		// test for 'd'
+		if(posD->token->kind != ALPHA || posD->token->value != 'd') continue;
+
+		// test if next node exists and is 'o'
+		if(posD->next == NULL) return;
+		posO = posD->next;
+		if(posO->token->kind != ALPHA || posO->token->value != 'o') continue;
+
+		// test if next node exists and is a '('
+		if(posO->next == NULL) return;
+		pOB = posO->next;
+		if(pOB->token->kind != OPEN_BRACKET) continue;
+
+		// test if next node exists and is a ')'
+		if(pOB->next == NULL) return;
+		pCB = pOB->next;
+		if(pCB->token->kind != CLOSE_BRACKET) continue;
+
+		// if we get to here we have a proper don't() statement
+		posD->token->kind = DO;
+		posD->token->value = 0;
+
+		// remove unused nodes
+		for(int i = 0; i < 3; i++) {
+			// remove 3 nodes (O, (, ))
+			removeNext(posD);
 		}
 	}
 }
