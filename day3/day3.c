@@ -63,12 +63,8 @@ void evalDo(Node *top);
 int main() {
 	FILE *file;
 	int ch;
-	char *buff = malloc(256);
 	Node *top = malloc(sizeof(Node));
 	Node *last = top;
-
-	*buff = 0;
-	PRINT_STRING(buff);
 
 	top->next = NULL;
 	top->token = NULL;
@@ -86,7 +82,7 @@ int main() {
 	while((ch = fgetc(file)) != EOF) {
 		if(ch != EOF && ch >= 'a' && ch <= 'z') {
 			// if ch is a lower case letter, add an alpha token
-			PRINT_CHAR(ch);
+			// PRINT_CHAR(ch);
 
 			addToken(ALPHA, ch, last);
 			last = last->next;
@@ -96,7 +92,7 @@ int main() {
 
 		if(ch != EOF && ch >= '0' && ch <= '9') {
 			// if ch is a number add a number token
-			PRINT_CHAR(ch);
+			// PRINT_CHAR(ch);
 			addToken(NUMBER, ch-'0', last);
 			last = last->next;
 
@@ -144,9 +140,9 @@ int main() {
 		last = last->next;
 	}
 
-	printf("\n");
-	printTokens(top);
-	printf("\n");
+	// printf("\n");
+	// printTokens(top);
+	// printf("\n");
 
 	findMul(top);
 	combineNum(top);
@@ -155,9 +151,9 @@ int main() {
 	evalDont(top);
 	evalDo(top);
 
-	printf("\n");
-	printTokens(top);
-	printf("\n");
+	// printf("\n");
+	// printTokens(top);
+	// printf("\n");
 
 	int sum = 0;
 	bool do_mul = true;
