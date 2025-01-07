@@ -17,6 +17,7 @@ node *newNode(char val);
 void printGrid(node *n);
 int checkGrid(node *n);
 int checkNode(node *n);
+int checkX(node *n);
 
 #define PRINT_INT(x) printf("%s is %d\n", #x, x)
 #define PRINT_CHAR(x) printf("%s is %c\n", #x, x)
@@ -26,6 +27,7 @@ int main() {
 
 	FILE *file;
 	int ch;
+	int count = 0;
 
 	node *top = NULL;
 	node *prev = top;
@@ -62,13 +64,24 @@ int main() {
 			prev = new;
 
 		} else {
-			ch = fgetc(file);
-			node *new = newNode(ch);
-			node *above = prev->row;
-			above->down = new;
-			new->up = above;
-			new->row = new;
-			prev = new;
+			if((ch = fgetc(file)) != EOF) {
+				node *new = newNode(ch);
+				node *above = prev->row;
+				above->down = new;
+				new->up = above;
+				new->row = new;
+				prev = new;
+				PRINT_INT(++count);
+				if(count == 101) {
+					printf("here\n");
+
+					PRINT_INT(ch);
+
+					PRINT_INT(ch == EOF);
+
+					printf("tests done\n");
+				}
+			}
 		}
 	}
 
@@ -78,6 +91,9 @@ int main() {
 
 	PRINT_INT(checkGrid(top));
 
+	printf("\n");
+
+	PRINT_INT(checkX(top));
 	printf("\n");
 }
 
@@ -308,4 +324,127 @@ int checkRight(node *n) {
 int checkNode(node *n) {
 	return checkUp(n) + checkDown(n) + checkLeft(n) + checkRight(n)
 				+ checkUR(n) + checkUL(n) + checkDR(n) + checkDL(n);
+}
+
+int checkXRU(node *n) {
+	node *pM1, *pM2, *pA, *pS1, *pS2;
+
+	pM1 = n;
+	if(pM1->val != 'M') return 0;
+	if(pM1->right == NULL || pM1->up == NULL) return 0;
+
+	pA = pM1->right->up;
+	if(pA->val != 'A') return 0;
+	if(pA->right == NULL || pA->up == NULL) return 0;
+
+	pS1 = pA->right->up;
+	if(pS1->val != 'S') return 0;
+
+	pM2 = pM1->right->right;
+	if(pM2->val != 'M') return 0;
+
+	pS2 = pM1->up->up;
+	if(pS2->val != 'S') return 0;
+
+	return 1;
+}
+
+int checkXRD(node *n) {
+	node *pM1, *pM2, *pA, *pS1, *pS2;
+
+	pM1 = n;
+	if(pM1->val != 'M') return 0;
+	if(pM1->right == NULL || pM1->down == NULL) return 0;
+
+	pA = pM1->right->down;
+	if(pA->val != 'A') return 0;
+	if(pA->right == NULL || pA->down == NULL) return 0;
+
+	pS1 = pA->right->down;
+	if(pS1->val != 'S') return 0;
+
+	pM2 = pM1->right->right;
+	if(pM2->val != 'M') return 0;
+
+	pS2 = pM1->down->down;
+	if(pS2->val != 'S') return 0;
+
+	return 1;
+}
+
+int checkXDR(node *n) {
+	node *pM1, *pM2, *pA, *pS1, *pS2;
+
+	pM1 = n;
+	if(pM1->val != 'M')	return 0;
+	if(pM1->down == NULL || pM1->right == NULL) return 0;
+
+	pA = pM1->down->right;
+	if(pA->val != 'A') return 0;
+	if(pA->down == NULL || pA->right == NULL) return 0;
+
+	pS1 = pA->down->right;
+	if(pS1->val != 'S') return 0;
+
+	pM2 = pM1->down->down;
+	if(pM2->val != 'M') return 0;
+
+	pS2 = pM1->right->right;
+	if(pS2->val != 'S') return 0;
+
+	return 1;
+}
+
+int checkXDL(node *n) {
+	node *pM1, *pM2, *pA, *pS1, *pS2;
+
+	pM1 = n;
+	if(pM1->val != 'M') return 0;
+	if(pM1->down == NULL || pM1->left == NULL) return 0;
+
+	pA = pM1->down->left;
+	if(pA->val != 'A') return 0;
+	if(pA->down == NULL || pA->left == NULL) return 0;
+
+	pS1 = pA->down->left;
+	if(pS1->val != 'S') return 0;
+
+	pM2 = pM1->down->down;
+	if(pM2->val != 'M') return 0;
+
+	pS2 = pM1->left->left;
+	if(pS2->val != 'S') return 0;
+
+	return 1;
+}
+
+int checkXnode(node *n) {
+	int XRU = checkXRU(n);
+	int XRD = checkXRD(n);
+	int XDR = checkXDR(n);
+	int XDL = checkXDL(n);
+	return XRU + XRD + XDR + XDL;
+}
+
+int checkX(node *n) {
+	int num = 0;
+	int count = 0;
+	
+	bool running = true;
+	while(running) {
+		num += checkXnode(n);
+		if(n->right == NULL) {
+			// end of row or end of grid
+			if(n->down == NULL) {
+				running = false; // end of grid
+			} else {		
+				n = n->row->down;	// go to start of next row
+			}
+		} else {
+			// go to next node
+			n = n->right;
+		}
+	}
+
+	return num;
 }
