@@ -31,6 +31,7 @@ void addPage(int p, update *u);
 bool contains(int n, int *a, int size);
 bool checkUp(update *u, rule *r);
 bool checkRules(update *u, ruleNode *r);
+int fixUpdate(update *u, ruleNode *r);
 
 int main() {
 
@@ -41,7 +42,7 @@ int main() {
 	ruleNode *last = NULL;
 	update *updates = NULL;
 	update *lastUp = NULL;
-	int answer = 0;
+	int answer = 0, fixAns = 0;
 
 	// open the file for reading
 	file = fopen("input.txt", "r");
@@ -111,6 +112,8 @@ int main() {
 			newUpdate->middle = newUpdate->pages[newUpdate->size/2];
 			if(checkRules(newUpdate, rules)) {
 				answer += newUpdate->middle;
+			} else {
+				fixAns += fixUpdate(newUpdate, rules);
 			}
 				
 			if(updates == NULL) {
@@ -126,6 +129,7 @@ int main() {
 	// printRules(rules);
 	// printUpdates(updates);
 	PRINT_INT(answer);
+	PRINT_INT(fixAns);
 
 }
 
@@ -146,11 +150,14 @@ void addPage(int p, update *u) {
 	}
 	u->pages[u->size - 1] = p;
 }
+void printArray(int *a, int size) {
+	for(int i = 0; i < size; i++) {
+		printf("%d,", a[i]);
+	}
+}
 
 void printPages(update *u) {
-	for(int i = 0; i < u->size; i++) {
-		printf("%d,", u->pages[i]);
-	}
+	printArray(u->pages, u->size);
 	printf(" middle is %d\n", u->middle);
 }
 
@@ -184,4 +191,42 @@ bool checkRules(update *u, ruleNode *r) {
 		r = r->next;
 	}
 	return true;
+}
+
+void swapPlaces(update *u, rule *r) {
+	for(int i = 0; i < u->size; i++) {
+		if(u->pages[i] == r->first) u->pages[i] = r->last;
+		else if(u->pages[i] == r->last) u->pages[i] = r->first;
+	}
+}
+
+int fixUpdate(update *u, ruleNode *r) {
+	int size = u->size;
+	int *a = malloc(sizeof(int) * size);
+	int newMid;
+
+	for(int i = 0; i < size; i ++) {
+		a[i] = u->pages[i];
+	}
+
+	// make fake update to test against rules
+	update *fakeUp = malloc(sizeof(update));
+	fakeUp->size = size;
+	fakeUp->pages = a;
+
+	ruleNode *riter = r;
+
+	while(!checkRules(fakeUp, r)) {
+		while(riter != NULL) {
+			if(!checkUp(fakeUp, riter->val)) swapPlaces(fakeUp, riter->val);
+			riter = riter->next;
+		}
+		riter = r;
+	}
+
+	// PRINT_INT(checkRules(fakeUp, r));
+
+	newMid = fakeUp->pages[size/2];
+	// PRINT_INT(newMid);
+	return newMid;
 }
