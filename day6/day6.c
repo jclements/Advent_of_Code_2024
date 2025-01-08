@@ -21,13 +21,16 @@ char *DIR_SYMBOL = "^>v<";
 typedef struct NPC {
 	int x;
 	int y;
+	int spawnX;
+	int spawnY;
 	Dir dir;
 	bool onMap;
+	bool inLoop;
 } NPC;
 
 typedef struct Map {
 	bool ** walkable;
-	bool ** visited;
+	char ** visited;
 	int totalVisits;
 	int xMax;
 	int yMax;
@@ -36,9 +39,10 @@ typedef struct Map {
 
 bool isWalkable(Map *map, int x, int y);
 void setWalkable(Map *map, int x, int y, bool w);
-void setVisited(Map *map, int x, int y, bool w);
+void setVisited(Map *map, int x, int y, char w);
 void printMap(Map *map);
 void moveGuard(Map *map);
+void resetMap(Map *map);
 
 int main() {
 
@@ -52,14 +56,15 @@ int main() {
 	// create first row only to get xsize correct before making more rows
 	map->walkable = malloc(ysize * sizeof(bool*));
 	map->walkable[0] = malloc(xsize * sizeof(bool));
-	map->visited = malloc(ysize * sizeof(bool*));
-	map->visited[0] = malloc(xsize * sizeof(bool));
+	map->visited = malloc(ysize * sizeof(char*));
+	map->visited[0] = malloc(xsize * sizeof(char));
 	map->totalVisits = 0;
 	map->xMax = xsize;
 	map->yMax = 1;
 	map->guard = malloc(sizeof(NPC));
 	map->guard->dir = NORTH;
 	map->guard->onMap = true;
+	map->guard->inLoop = false;
 
 	// open the file for reading
 	file = fopen("input.txt", "r");
@@ -77,7 +82,9 @@ int main() {
 			// if this is NPC start, set coords
 			if(ch == '^') {
 				map->guard->x = readX;
+				map->guard->spawnX = readX;
 				map->guard->y = readY;
+				map->guard->spawnY = readY;
 				// printf("guard here-> ");
 			}
 
@@ -96,28 +103,28 @@ int main() {
 			readX = 0;
 			map->yMax = readY;
 			map->walkable[readY] = malloc(xsize * sizeof(bool));
-			map->visited[readY] = malloc(xsize * sizeof(bool));
+			map->visited[readY] = malloc(xsize * sizeof(char));
 		}
 
 		// check if rows need to grow, next write would fill
 		if(readX >= xsize - 1) {
 			xsize *= 2;
 			map->walkable[readY] = realloc(map->walkable[readY], xsize * sizeof(bool));
-			map->visited[readY] = realloc(map->visited[readY], xsize * sizeof(bool));
+			map->visited[readY] = realloc(map->visited[readY], xsize * sizeof(char));
 		}
 
 		// check if height needs to grow, next row will fill
 		if(readY >= ysize - 1) {
 			ysize *= 2;
 			map->walkable = realloc(map->walkable, ysize * sizeof(bool*));
-			map->visited = realloc(map->visited, ysize * sizeof(bool*));
+			map->visited = realloc(map->visited, ysize * sizeof(char*));
 		}
 	}
 
 	PRINT_INT(map->xMax);
 	PRINT_INT(xsize);
 
-	setVisited(map, map->guard->x, map->guard->y, true);
+	setVisited(map, map->guard->spawnX, map->guard->spawnY, '^');
 
 	printMap(map);
 
@@ -128,6 +135,31 @@ int main() {
 	printMap(map);
 
 	PRINT_INT(map->totalVisits);
+
+	int loops = 0;
+	for(int y = 0; y < map->yMax; y++) {
+		for(int x = 0; x < map->xMax; x++) {
+			if(y == map->guard->spawnY && x == map->guard->spawnX) continue;
+			if(!isWalkable(map, x, y)) continue;
+			resetMap(map);
+
+			setWalkable(map, x, y, false);
+
+			while(map->guard->onMap && !map->guard->inLoop) {
+				moveGuard(map);
+			}
+			
+			if(map->guard->inLoop) {
+				loops++;
+				// printMap(map);
+			}
+
+			setWalkable(map, x, y, true);
+		}
+	}
+
+	PRINT_INT(loops);
+
 }
 
 bool isWalkable(Map *map, int x, int y) {
@@ -144,7 +176,7 @@ bool isVisited(Map *map, int x, int y) {
 	return map->visited[y][x];
 }
 
-void setVisited(Map *map, int x, int y, bool w) {
+void setVisited(Map *map, int x, int y, char w) {
 	map->visited[y][x] = w;
 	// printf("%d,%d is visited = %d\n", x, y, w);
 	if(w) map->totalVisits++;
@@ -161,7 +193,7 @@ void printMap(Map *map) {
 			if(map->guard->onMap && guardHere(map, x, y)) {
 				printf("%c", DIR_SYMBOL[map->guard->dir]);
 			} else if(isVisited(map, x, y)) {
-				printf("X");
+				printf("%c", map->visited[y][x]);
 			} else if(isWalkable(map, x, y)) {
 				printf(".");
 			} else {
@@ -171,6 +203,23 @@ void printMap(Map *map) {
 		printf("\n");
 	}
 	printf("\n");
+}
+
+void testLoop(Map *map) {
+	int x = map->guard->x, y = map->guard->y;
+	if(!isVisited(map, x, y)) return;
+	if(map->visited[y][x] == DIR_SYMBOL[map->guard->dir]) {
+		map->guard->inLoop = true;
+	}
+}
+
+void setDir(NPC *g, Dir d) {
+	g->dir = d;
+}
+
+void setLoc(NPC *g, int x, int y) {
+	g->x = x;
+	g->y = y;
 }
 
 void moveGuard(Map *map) {
@@ -198,13 +247,30 @@ void moveGuard(Map *map) {
 	}
 
 	if(isWalkable(map, dx, dy)) {
-		map->guard->x = dx;
-		map->guard->y = dy;
+		setLoc(map->guard, dx, dy);
+		testLoop(map);
 		if(!isVisited(map, dx, dy)){
-			setVisited(map, dx, dy, true);
+			setVisited(map, dx, dy, DIR_SYMBOL[map->guard->dir]);
 		}
 		return;
 	}
 
-	map->guard->dir = (map->guard->dir + 1) % 4; 
+	setDir(map->guard, (map->guard->dir + 1) % 4); 
+}
+
+void resetMap(Map *map) {
+	map->totalVisits = 0;
+	map->guard->x = map->guard->spawnX;
+	map->guard->y = map->guard->spawnY;
+	map->guard->onMap = true;
+	map->guard->inLoop = false;
+	map->guard->dir = NORTH;
+
+	for(int y = 0; y < map->yMax; y++) {
+		for(int x = 0; x < map->xMax; x++) {
+			setVisited(map, x, y, false);
+		}
+	}
+
+	setVisited(map, map->guard->spawnX, map->guard->spawnY, true);
 }
