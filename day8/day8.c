@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include "../src/array2d.h"
 
 #define PRINT_INT(x) printf("%s is %d\n", #x, x)
 #define PRINT_CHAR(x) printf("%s is %c\n", #x, x)
@@ -15,26 +16,12 @@ typedef struct Node {
 	struct Node *next;
 } Node;
 
-typedef struct {
-	Node **array;
-	int numRows;
-	int maxRows;
-	int numCols;
-	int maxCols;
-} NodeArray2d;
 
 typedef struct {
-	bool ** array;
-	int numRows;
-	int maxRows;
-	int numCols;
-	int maxCols;
-} BoolArray2d;
-
-typedef struct {
-	NodeArray2d symbols;
-	BoolArray2d antinodes;
-	BoolArray2d symMap;
+	Array2D *symbols;
+	Array2D *antinodes;
+	Array2D *symMap;
+	int rowSize;
 } Map;
 
 char *getLine(FILE *file);
@@ -46,14 +33,14 @@ Node *findSymbol(Map *m, char s);
 int main() {
 
 	FILE *file;
-	int ch;
 
 	Map *map = malloc(sizeof(Map));
+	map->rowSize = 0;
 	char *line;
 
-	map->symbols = malloc(sizeof(Node*) * map->maxSym);
-	map->antinodes = malloc(sizeof(bool*) * map->maxRows);
-	map->symMap = malloc(sizeof(bool*) * map->maxRows);
+	map->symbols = newArray2D(INITIAL_SIZE, INITIAL_SIZE, sizeof(Node));
+	map->antinodes = newArray2D(INITIAL_SIZE, INITIAL_SIZE, sizeof(bool));
+	map->symMap = newArray2D(INITIAL_SIZE, INITIAL_SIZE, sizeof(bool));
 
 	// open the file for reading
 	file = fopen("input.txt", "r");
@@ -69,31 +56,39 @@ int main() {
 	while((line = getLine(file))) {
 		// if this is the first line, get the width and initialize
 		// array of antinodes
-		if(map->rowSize == 0) {
+		if(map->antinodes->numRows == 0) {
 			map->rowSize = strlen(line);
+			while(map->rowSize > map->antinodes->maxCols) {
+				moreCols(map->antinodes);
+				moreCols(map->symMap);
+			}
 		}
 
 		// if antinode rows are already full, grow size
-		if(map->numRows >= map->maxRows) {
-			map->maxRows *= 2;
-			map->antinodes = realloc(map->antinodes, sizeof(bool*) * map->maxRows);
+		if(map->antinodes->numRows >= map->antinodes->maxRows) {
+			moreRows(map->antinodes);
+			moreRows(map->symMap);
 		}
 
 		// iterate through row and add new nodes if needed
 		// also fill in 0s to antinodes array so it's ready for later
-		for(int i = 0; i < map->rowSize; i ++) {
-			map->antinodes[map->numRows][i] = false;
-			if(line[i] != '.') {
-				map->curr->x = i;
-				map->curr->y = map->numRows;
-				map->curr->sym = line[i];
-				map->curr->next = newNode();
-				map->curr = map->curr->next;
-			}
+		bool initFalse = false;
+		for(int i = 0; i < map->rowSize; i++) {
+			setElement(map->antinodes,map->antinodes->numRows,i,&initFalse);
 
-			map->numRows++;
+			char initSym = line[i];
+			setElement(map->symMap,map->symMap->numRows,i,&initSym);
+
+			if(line[i] != '.') {
+				// add symbol to symbol array2d
+			}
+			
+			map->antinodes->numRows++;
+			map->symMap->numRows++;
 		}
 	}
+	printf("got to end\n");
+	printf("double free might be happening after program is done\n");
 }
 
 char *getLine(FILE *file) {
@@ -141,32 +136,6 @@ int power(int x, int n) {
 	return v;
 }
 
-bool testEq(equation *eq) {
-	int places = eq->size - 1;
-	int max = power(2, places);	// size-1 places ^2 possible values
-	int test = 0;
-	unsigned long long int val;
-
-	while(test < max) {
-		val = eq->numbers[0];
-		for(int i = 0; i < places; i++) {
-			int op = (test >> i) & 1;
-			if(op) {
-				// printf("times ");
-				val *= eq->numbers[i+1];
-			} else {
-				// printf("plus ");
-				val += eq->numbers[i+1];
-			}
-		}
-		// printf("= %lld\n", val);
-		if(val == eq->value) eq->num_correct++;
-		test++;
-	}
-	if(eq->num_correct > 0) return true;
-
-	return false;
-}
 
 void toTrinary(int x, char *x3, int places) {
 	int index = 0;
@@ -181,64 +150,4 @@ void toTrinary(int x, char *x3, int places) {
 	}
 }
 
-bool testEq3(equation *eq) {
-	int places = eq->size - 1;
-	int max = power(3, places);	// size-1 places ^3 possible values
-	int test = 0;
-	unsigned long long int val;
-	char ops[100];
 
-	while(test < max) {
-		toTrinary(test, ops, places);
-		val = eq->numbers[0];
-		for(int i = 0; i < places; i++) {
-			int op = (test >> i) & 1;
-			if(ops[i] == '0') {
-				// printf("times ");
-				val *= eq->numbers[i+1];
-			} else if(ops[i] == '1') {
-				// printf("plus ");
-				val += eq->numbers[i+1];
-			} else {
-				// printf("cat ");
-				char val_str[20];
-				char next[20];
-				snprintf(val_str, sizeof(val_str), "%lld", val);
-				snprintf(next, sizeof(next), "%d", eq->numbers[i+1]);
-				strcat(val_str, next);
-				char *endp;
-				val = strtol(val_str, &endp, 10);
-
-				if(*endp != '\0') {
-					// printf("error converting value to long int\n");
-					return -1;
-				}
-				// printf("val is %lld\n", val);
-			}
-		}
-		// printf("= %lld\n", val);
-		if(val == eq->value) eq->num_correct++;
-		test++;
-	}
-	if(eq->num_correct > 0) return true;
-
-	return false;
-}
-
-void printMap(Map *m) {
-	for(int y = 0; y < m->maxRows; y++) {
-		for(int x = 0; x < m->rowSize; x++) {
-
-		}
-	}
-}
-
-void printAntis(Map *m);
-
-Node *findSymbol(Map *m, char s) {
-	for(int i = 0; i < m->numSym; i++) {
-		if(m->symbols[i]->sym == s) return m->symbols[i];
-	}
-
-	return NULL;
-}
