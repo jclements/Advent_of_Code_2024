@@ -2,25 +2,23 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include "../src/array2d.h"
+#include "array2d.h"
+#include "array.h"
+#include "define.h"
 
-#define PRINT_INT(x) printf("%s is %d\n", #x, x)
-#define PRINT_CHAR(x) printf("%s is %c\n", #x, x)
-#define PRINT_STRING(x) printf("%s is %s\n", #x, x)
 #define INITIAL_SIZE 2
 
 typedef struct Node {
+	struct Node *next;
 	int x;
 	int y;
 	char sym;
-	struct Node *next;
 } Node;
 
-
 typedef struct {
-	Array2D *symbols;
 	Array2D *antinodes;
 	Array2D *symMap;
+	Array *symbols;
 	int rowSize;
 } Map;
 
@@ -29,8 +27,10 @@ Node *newNode();
 void printMap(Map *m);
 void printAntis(Map *m);
 Node *findSymbol(Map *m, char s);
+void addSymbolNode(Map *m, char s, int row, int col);
 
 int main() {
+	PRINT_INT(5);
 
 	FILE *file;
 
@@ -38,13 +38,12 @@ int main() {
 	map->rowSize = 0;
 	char *line;
 
-	map->symbols = newArray2D(INITIAL_SIZE, INITIAL_SIZE, sizeof(Node));
+	map->symbols = newArray(INITIAL_SIZE, sizeof(Node *));
 	map->antinodes = newArray2D(INITIAL_SIZE, INITIAL_SIZE, sizeof(bool));
 	map->symMap = newArray2D(INITIAL_SIZE, INITIAL_SIZE, sizeof(bool));
 
 	// open the file for reading
-	file = fopen("input.txt", "r");
-	// ex2.txt should be 3965, 11603 pt 2
+	file = fopen("example.txt", "r");
 
 	// check if it's open
 	if(file == NULL) {
@@ -74,21 +73,25 @@ int main() {
 		// also fill in 0s to antinodes array so it's ready for later
 		bool initFalse = false;
 		for(int i = 0; i < map->rowSize; i++) {
-			setElement(map->antinodes,map->antinodes->numRows,i,&initFalse);
+			int currRow = map->symMap->numRows;
+			arr2d_setElement(map->antinodes,currRow,i,&initFalse);
 
 			char initSym = line[i];
-			setElement(map->symMap,map->symMap->numRows,i,&initSym);
+			arr2d_setElement(map->symMap,currRow,i,&initSym);
 
-			if(line[i] != '.') {
+			if(initSym != '.') {
 				// add symbol to symbol array2d
+				addSymbolNode(map, initSym, currRow, i);
 			}
 			
-			map->antinodes->numRows++;
-			map->symMap->numRows++;
+			map->antinodes->numCols++;
+			map->symMap->numCols++;
 		}
+		map->symMap->numRows++;
+		map->antinodes->numRows++;
 	}
-	printf("got to end\n");
-	printf("double free might be happening after program is done\n");
+
+	printMap(map);
 }
 
 char *getLine(FILE *file) {
@@ -111,6 +114,7 @@ char *getLine(FILE *file) {
 	// now ch is EOF or newline
 	if(len == 0 && ch == EOF) {
 		free(buffer);
+		buffer = NULL;
 		return NULL;
 	}
 
@@ -150,4 +154,39 @@ void toTrinary(int x, char *x3, int places) {
 	}
 }
 
+void printMap(Map *m) {
+	for(int row = 0; row < m->symMap->numRows; row++) {
+		char *currRow = arr2d_getRow(m->symMap, row);
+		printf("%s\n", currRow);
+	}
+}
 
+void printAntis(Map *m);
+
+void addSymbolNode(Map *m, char s, int row, int col) {
+	
+	Node *dest = findSymbol(m, s);
+	if(dest) {
+		// found this symbol in table already, add to end of linked list
+		printf("%c is in table already\n", s);
+	} else {
+		// symbol not found, add a new element to the array
+		Node *n = newNode();
+		n->sym = s;
+		n->x = col;
+		n->y = row;
+		array_append(m->symbols, &n);
+		printf("I just put %c (%c) into the Array that has %d elements\n", s, ((Node **)(m->symbols->array))[m->symbols->numElements-1]->sym, m->symbols->numElements);
+		printf("head has sym: %c\n", (Node *)(m->symbols->array)->sym);
+	}
+}
+
+Node *findSymbol(Map *m, char s) {
+	Node *head = m->symbols->array;
+	printf("head has sym: %c\n", head->sym);
+	for(Node *p = head; (p - head) < m->symbols->numElements; p++) {
+		printf("%c == %c?\n", s, p->sym);
+		if(p->sym == s) return p;
+	}
+	return NULL;
+}

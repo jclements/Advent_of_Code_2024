@@ -2,16 +2,22 @@
 
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99
+CFLAGS_RELEASE = -Wall -Wextra -std=c99 -I../../include
+CFLAGS_DEBUG = -Wall -Wextra -std=c99 -g -I../../include
 
 # Directories
-SRC_DIR = ../src
+SRC_DIR = ../../src
 BUILD_DIR = ./build
+
+# Mode (default is release)
+MODE ?= RELEASE
+CFLAGS = $(CFLAGS_$(MODE))
 
 # Files
 ARRAY2D_SRC = $(SRC_DIR)/array2d.c
+ARRAY_SRC = $(SRC_DIR)/array.c
 DAY_SRC = day8.c
-OBJ_FILES = $(BUILD_DIR)/array2d.o $(BUILD_DIR)/day8.o
+OBJ_FILES = $(BUILD_DIR)/array2d.o $(BUILD_DIR)/day8.o $(BUILD_DIR)/array.o
 EXECUTABLE = day8
 
 # Rules
@@ -32,4 +38,4 @@ $(BUILD_DIR)/%.o: %.c
 clean:
 	rm -rf $(BUILD_DIR)
 
-.PHONY: all clean
+.PHONY: all clean debug
