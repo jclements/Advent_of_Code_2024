@@ -2,49 +2,18 @@
   {
     "arguments": [
       "/usr/bin/gcc",
+      "-c",
       "-Wall",
       "-Wextra",
       "-std=c99",
-      "-I../../include",
-      "-c",
+      "-I/home/jeremy/code/c/include",
+      "/home/jeremy/code/c/lib/libds.a",
       "-o",
-      "build/array2d.o",
-      "../../src/array2d.c"
-    ],
-    "directory": "/home/jeremy/code/c/aoc2024/day8",
-    "file": "/home/jeremy/code/c/src/array2d.c",
-    "output": "/home/jeremy/code/c/aoc2024/day8/build/array2d.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/gcc",
-      "-Wall",
-      "-Wextra",
-      "-std=c99",
-      "-I../../include",
-      "-c",
-      "-o",
-      "build/day8.o",
+      "day8",
       "day8.c"
     ],
-    "directory": "/home/jeremy/code/c/aoc2024/day8",
-    "file": "/home/jeremy/code/c/aoc2024/day8/day8.c",
-    "output": "/home/jeremy/code/c/aoc2024/day8/build/day8.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/gcc",
-      "-Wall",
-      "-Wextra",
-      "-std=c99",
-      "-I../../include",
-      "-c",
-      "-o",
-      "build/array.o",
-      "../../src/array.c"
-    ],
-    "directory": "/home/jeremy/code/c/aoc2024/day8",
-    "file": "/home/jeremy/code/c/src/array.c",
-    "output": "/home/jeremy/code/c/aoc2024/day8/build/array.o"
+    "directory": "/home/jeremy/code/c/Advent_of_Code_2024/day8",
+    "file": "/home/jeremy/code/c/Advent_of_Code_2024/day8/day8.c",
+    "output": "/home/jeremy/code/c/Advent_of_Code_2024/day8/day8"
   }
 ]

@@ -2,38 +2,29 @@
 
 # Compiler and flags
 CC = gcc
-CFLAGS_RELEASE = -Wall -Wextra -std=c99 -I../../include
-CFLAGS_DEBUG = -Wall -Wextra -std=c99 -g -I../../include
+CFLAGS_RELEASE = -Wall -Wextra -std=c99 -I$(HOME)/code/c/include
+CFLAGS_DEBUG = -Wall -Wextra -std=c99 -g -I$(HOME)/code/c/include
 
 # Directories
-SRC_DIR = ../../src
+SRC_DIR = $(HOME)/code/c/src
 BUILD_DIR = ./build
+LIB_DIR = $(HOME)/code/c/lib
 
 # Mode (default is release)
 MODE ?= RELEASE
 CFLAGS = $(CFLAGS_$(MODE))
 
 # Files
-ARRAY2D_SRC = $(SRC_DIR)/array2d.c
-ARRAY_SRC = $(SRC_DIR)/array.c
-DAY_SRC = day8.c
-OBJ_FILES = $(BUILD_DIR)/array2d.o $(BUILD_DIR)/day8.o $(BUILD_DIR)/array.o
-EXECUTABLE = day8
+SRC_FILES = $(wildcard *.c)
+OBJ_FILES = $(patsubst %.c, $(BUILD_DIR)/%.o, $(SRC_FILES))
+EXECUTABLE = $(patsubst %.c, %, $(SRC_FILES))
+LIBDS = $(LIB_DIR)/libds.a
 
 # Rules
 all: $(EXECUTABLE)
 
-$(EXECUTABLE): $(OBJ_FILES)
-	@mkdir -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) -o $@ $^
-
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
-	@mkdir -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c -o $@ $<
-
-$(BUILD_DIR)/%.o: %.c
-	@mkdir -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c -o $@ $<
+%: %.c
+	$(CC) $(CFLAGS) -o $@ $^ $(LIBDS)
 
 clean:
 	rm -rf $(BUILD_DIR)
